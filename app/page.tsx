@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import Booking from './Booking';
 import { barbers, reviews, services, type Service } from './data';
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -20,42 +21,9 @@ function Visual({ className, label, src }: { className: string; label: string; s
   return <div className={`visual ${className}`}><img src={`${basePath}${src}`} alt={label} /><span className="visual-mark" aria-hidden="true">BB</span></div>;
 }
 
-function getAvailableDates() {
-  return Array.from({ length: 14 }, (_, index) => {
-    const date = new Date();
-    date.setHours(12, 0, 0, 0);
-    date.setDate(date.getDate() + index);
-    return date;
-  });
-}
-
-function getTimeSlots(date: Date) {
-  const lastHour = date.getDay() === 0 ? 16 : 21;
-  return Array.from({ length: lastHour - 10 }, (_, index) => `${String(index + 10).padStart(2, '0')}:00`);
-}
-
-function formatDate(date: Date, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('es-MX', options).format(date);
-}
-
 export default function Home() {
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedBarber, setSelectedBarber] = useState(barbers[0]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const availableDates = useMemo(getAvailableDates, []);
-  const timeSlots = selectedDate ? getTimeSlots(selectedDate) : [];
-
-  const openBooking = (service?: Service) => { setSelectedService(service ?? services[0]); setSelectedDate(availableDates[0]); setSelectedTime(null); setStep(1); setSubmitted(false); setBookingOpen(true); };
-  const closeBooking = () => setBookingOpen(false);
-  const next = () => { if (step !== 3 || selectedTime) setStep((current) => Math.min(4, current + 1)); };
-  const back = () => setStep((current) => Math.max(1, current - 1));
-  const submit = (event: React.FormEvent) => { event.preventDefault(); setSubmitted(true); };
-
-  const stepLabel = useMemo(() => ['Servicio', 'Barbero', 'Fecha y hora', 'Tus datos'][step - 1], [step]);
+  const [booking, setBooking] = useState<{ service?: Service } | null>(null);
+  const openBooking = (service?: Service) => setBooking({ service });
 
   return (
     <main>
@@ -104,21 +72,7 @@ export default function Home() {
 
       <footer className="site-footer"><div className="footer-brand"><img src={`${basePath}/logo.jpg`} alt="Brickell Barber" /><p>Precisión que se nota.</p></div><div className="footer-links"><div><span>Explora</span><a href="#servicios">Servicios</a><a href="#galeria">Galería</a><a href="#barberos">Barberos</a></div><div><span>Social</span><a href="https://www.facebook.com/profile.php?id=61557382316980" target="_blank" rel="noreferrer">Facebook ↗</a><a href="https://www.instagram.com/brickell_barbers" target="_blank" rel="noreferrer">Instagram ↗</a><a href={mapUrl} target="_blank" rel="noreferrer">Google Maps ↗</a></div><div><span>Contacto</span><a href="tel:+525521818886">+52 55 2181 8886</a><a href={mapUrl} target="_blank" rel="noreferrer">Cómo llegar ↗</a><button onClick={() => openBooking()}>Reservar <Arrow /></button></div></div><div className="footer-bottom"><span>© 2026 Brickell Barber</span><span>4.9 ★ · 31 reseñas</span><span>Hecho con intención.</span></div></footer>
       <button className="mobile-booking" onClick={() => openBooking()}>Reservar cita <Arrow /></button>
-      {bookingOpen && <div className="booking-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeBooking(); }}>
-        <section className="booking-panel" role="dialog" aria-modal="true" aria-labelledby="booking-title">
-          <button className="close-button" onClick={closeBooking} aria-label="Cerrar reserva">×</button>
-          {submitted ? <div className="booking-success"><span className="success-icon">✓</span><p className="eyebrow">Reserva demo confirmada</p><h2>Nos vemos<br /><em>pronto.</em></h2><p>Guardamos tu solicitud para el <strong>{selectedDate && formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</strong> a las <strong>{selectedTime}</strong> con <strong>{selectedBarber.name}</strong>. En una integración real, aquí recibirías la confirmación.</p><button className="button button-primary" onClick={closeBooking}>Volver al sitio <Arrow /></button></div> : <>
-            <div className="booking-head"><p className="eyebrow">Reserva tu cita</p><h2 id="booking-title">Tu próximo<br /><em>corte.</em></h2><span className="step-count">0{step} / 04</span></div>
-            <div className="progress"><span style={{ width: `${step * 25}%` }} /></div>
-            <p className="booking-step-label">Paso {step}: {stepLabel}</p>
-            {step === 1 && <div className="booking-options">{services.map((service) => <button type="button" className={`booking-option ${selectedService?.id === service.id ? 'selected' : ''}`} key={service.id} onClick={() => setSelectedService(service)} aria-pressed={selectedService?.id === service.id}><span><strong>{service.name}</strong><small>{service.duration} · {service.price}</small></span><span className="option-check" aria-hidden="true">{selectedService?.id === service.id ? '✓' : '＋'}</span></button>)}</div>}
-            {step === 2 && <div className="booking-options">{barbers.map((barber) => <button type="button" className={`booking-option ${selectedBarber.id === barber.id ? 'selected' : ''}`} key={barber.id} onClick={() => setSelectedBarber(barber)} aria-pressed={selectedBarber.id === barber.id}><span><strong>{barber.name}</strong><small>{barber.specialty}</small></span><span className="option-avatar" aria-hidden="true">{barber.initials}</span></button>)}</div>}
-            {step === 3 && <div className="time-picker"><div><p className="date-picker-label">Elige una fecha</p><div className="date-row" role="group" aria-label="Fechas disponibles">{availableDates.map((date) => { const isSelected = selectedDate?.toDateString() === date.toDateString(); return <button type="button" className={`date ${isSelected ? 'selected' : ''}`} key={date.toISOString()} onClick={() => { setSelectedDate(date); setSelectedTime(null); }} aria-pressed={isSelected}><strong>{formatDate(date, { weekday: 'short' }).replace('.', '')}</strong><span>{date.getDate()}</span><small>{formatDate(date, { month: 'short' }).replace('.', '')}</small></button>; })}</div></div><div><p className="time-picker-label">{selectedDate && formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}<small>{selectedDate?.getDay() === 0 ? 'Horario: 10:00 — 16:00' : 'Horario: 10:00 — 21:00'}</small></p><div className="time-grid">{timeSlots.map((time) => <button type="button" className={`time ${selectedTime === time ? 'selected' : ''}`} onClick={() => setSelectedTime(time)} aria-pressed={selectedTime === time} key={time}>{time}</button>)}</div></div></div>}
-            {step === 4 && <form id="booking-form" className="booking-form" onSubmit={submit}><label>Nombre completo<input required name="name" type="text" autoComplete="name" placeholder="Tu nombre" /></label><label>Correo electrónico<input required name="email" type="email" autoComplete="email" placeholder="tu@email.com" /></label><label>Teléfono<input required name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="55 2181 8886" /></label><label className="consent"><input required type="checkbox" /> <span>Acepto recibir la confirmación de esta cita demo.</span></label></form>}
-            <div className="booking-actions">{step > 1 && <button type="button" className="text-link" onClick={back}>← Atrás</button>}<button className="button button-primary" disabled={step === 3 && !selectedTime} onClick={step === 4 ? undefined : next} type={step === 4 ? 'submit' : 'button'} form={step === 4 ? 'booking-form' : undefined}>{step === 4 ? 'Confirmar cita' : 'Continuar'} <Arrow /></button></div>
-          </>}
-        </section>
-      </div>}
+      {booking && <Booking initialService={booking.service} onClose={() => setBooking(null)} />}
     </main>
   );
 }
